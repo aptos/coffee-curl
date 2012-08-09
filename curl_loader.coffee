@@ -10,13 +10,13 @@ params = {
   request_delay: 1000, 
   pattern: {
     start_count: 1,
-    end_count: 10000, 
-    duration: 120000
+    end_count: 5000, 
+    duration: 60000
   },
-  duration: 120000
+  duration: 60000
 }
 
-# Initiallize stats object
+# Initialize stats object
 stats = {
     'volume': 0, 
     'total': 0, 
@@ -77,10 +77,9 @@ ramp = (params) ->
 stop = (duration) ->
   return () ->
     if stats['duration'] >= params['duration']
-      stop_test = true
       console.log("stopping [#{runners.length}] timers")
-      clearInterval id for id in runners
-    
+      process.exit()
+      
 # Start ramping, updating console and watch for stop (end test)
 runners.push setInterval( ramp(params), step_delay )
 
