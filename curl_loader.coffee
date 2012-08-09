@@ -2,6 +2,7 @@ request = require 'request'
 
 # https://github.com/mikeal/request/
 
+# Static params, would normally be sent to a Server process
 params = {
   poll_interval: 5000,
   uri: "http://localhost",
@@ -15,6 +16,7 @@ params = {
   duration: 120000
 }
 
+# Initiallize stats object
 stats = {
     'volume': 0, 
     'total': 0, 
@@ -24,6 +26,7 @@ stats = {
     'codes':{}
 }
 
+# Compute step size for ramp pattern
 step_size = (params['pattern']['end_count'] - params['pattern']['start_count'])/params['pattern']['duration']
 
 if step_size < 1
@@ -35,10 +38,12 @@ else
 
 params['duration'] ||= params['pattern']['duration']
 
+# Start time
 stats['start_time'] = new Date().getTime()
 
 runners = []
 
+# Execute http request and update stats
 run = (params) -> 
   return () ->  
     request(params, (e, r, body) ->
@@ -51,10 +56,12 @@ run = (params) ->
         stats['errors'] += 1 
     )
     
+# Output stats to console
 update = () ->
   return () ->
     console.log(stats)
   
+# Ramp up the execution instances
 ramp = (params) ->
   return () -> 
     remaining = params['pattern']['end_count'] - stats['volume']
@@ -66,6 +73,7 @@ ramp = (params) ->
     stats['volume'] += step_size
     stats['duration'] = new Date().getTime() - stats['start_time']
     
+# Stop all instances once test duration is reached
 stop = (duration) ->
   return () ->
     if stats['duration'] >= params['duration']
@@ -73,7 +81,7 @@ stop = (duration) ->
       console.log("stopping [#{runners.length}] timers")
       clearInterval id for id in runners
     
-
+# Start ramping, updating console and watch for stop (end test)
 runners.push setInterval( ramp(params), step_delay )
 
 runners.push setInterval( update(), params['poll_interval'] )
