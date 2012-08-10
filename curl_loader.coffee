@@ -2,19 +2,22 @@ request = require 'request'
 
 # https://github.com/mikeal/request/
 
-# Static params, would normally be sent to a Server process
+# Default params, pattern array not yet implemented, times are in seconds
 params = {
-  poll_interval: 5000,
-  uri: "http://localhost",
-  method: "GET",
-  request_delay: 1000, 
+  request: {
+    uri: "http://localhost",
+    method: "GET"
+  },
+  poll_interval: 1,
   pattern: {
     start_count: 1,
     end_count: 5000, 
-    duration: 60000
   },
-  duration: 60000
+  duration: 30
 }
+
+# computed rate for ramp computation
+ramp_rate = (params['pattern']['end_count'] - params['pattern']['start_count'])/params['duration']
 
 # Initialize stats object
 stats = {
@@ -26,35 +29,26 @@ stats = {
     'codes':{}
 }
 
-# Compute step size for ramp pattern
-step_size = (params['pattern']['end_count'] - params['pattern']['start_count'])/params['pattern']['duration']
-
-if step_size < 1
-  step_delay = 1/step_size
-  step_size = 1
-else
-  step_delay = 1
-  step_size = step_size.to_i
-
-params['duration'] ||= params['pattern']['duration']
-
+# utilities
+now = () ->
+  return new Date().getTime()
+  
 # Start time
-stats['start_time'] = new Date().getTime()
-
-runners = []
+stats['start_time'] = now()
 
 # Execute http request and update stats
-run = (params) -> 
-  return () ->  
-    request(params, (e, r, body) ->
-      stats['total'] += 1
-      stats['codes'][r.statusCode] = if stats['codes'][r.statusCode] then stats['codes'][r.statusCode] + 1 else 1
-      if r.statusCode < 400
-        stats['pass'] += 1 
-      else
-        console.log "Error: #{e}"
-        stats['errors'] += 1 
-    )
+run = (params) ->  
+  t1 = now()
+  request(params['request'], (e, r, body) ->
+    stats['response_time'] = now() - t1
+    stats['total'] += 1
+    stats['codes'][r.statusCode] = if stats['codes'][r.statusCode] then stats['codes'][r.statusCode] + 1 else 1
+    if r.statusCode < 400
+      stats['pass'] += 1 
+    else
+      console.log "Error: #{e}"
+      stats['errors'] += 1 
+  )
     
 # Output stats to console
 update = () ->
@@ -64,14 +58,12 @@ update = () ->
 # Ramp up the execution instances
 ramp = (params) ->
   return () -> 
-    remaining = params['pattern']['end_count'] - stats['volume']
-    step_size = if remaining < step_size then remaining else step_size
-  
-    for i in [1..step_size]
-      runners.push setInterval( run(params), params['request_delay'] )
-  
-    stats['volume'] += step_size
-    stats['duration'] = new Date().getTime() - stats['start_time']
+    stats['duration'] = (now() - stats['start_time'])/1000 # in seconds
+    if stats['duration'] <= params['duration']
+      volume = params['pattern']['start_count'] + Math.round (ramp_rate * stats['duration'])
+      stats['volume'] = if volume > params['pattern']['end_count'] then params['pattern']['end_count'] else volume
+      for i in [1..stats['volume']]
+        run(params)
     
 # Stop all instances once test duration is reached
 stop = (duration) ->
@@ -81,8 +73,13 @@ stop = (duration) ->
       process.exit()
       
 # Start ramping, updating console and watch for stop (end test)
-runners.push setInterval( ramp(params), step_delay )
+runners = []
 
-runners.push setInterval( update(), params['poll_interval'] )
+# ramp and run
+runners.push setInterval( ramp(params), 1000 )
 
+# print updates
+runners.push setInterval( update(), params['poll_interval'] * 1000 )
+
+# stop when duration is reached
 runners.push setInterval( stop(params['duration']) , 1000 )
