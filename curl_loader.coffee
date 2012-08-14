@@ -9,9 +9,9 @@ params = {
   poll_interval: 1,
   pattern: {
     start_count: 1,
-    end_count: 1000, 
+    end_count: 10000, 
   },
-  duration: 120
+  duration: 60
 }
 
 r = new RunTime()

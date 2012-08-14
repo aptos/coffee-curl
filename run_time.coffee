@@ -7,9 +7,6 @@ class RunTime
     
   constructor: () ->
     console.log("RunTime Created")
-    @s = new Stats()
-    @stats = @s.stats
-    console.log @stats
 
   now: () ->
     return new Date().getTime()
@@ -47,17 +44,28 @@ class RunTime
             @run(@params)
       else
         @stats.volume = 0
+        # Stop after 5 second cool down
+        if @stats.duration > @params.duration + 5
+          @stats.finished = true
+          @stop()
 
   start: (@params) ->
     console.log("start... #{@params.duration} second pattern")
+    if @runId
+      console.log "already running!"
+      return {ok: false, message: "already running!"}
+    @s = new Stats()
+    @stats = @s.stats
     @ramp_rate = (@params.pattern.end_count - @params.pattern.start_count)/@params.duration
     @stats.start_time = @now()
     @runId = setInterval( @ramp(@params), 100 )
-    return @runId
+    return {ok: true}
 
   stop: () -> 
     console.log("stop...")
-
+    clearInterval(@runId)
+    delete @runId
+    return {ok: true}
 
 module.exports = RunTime
 

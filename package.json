@@ -1,0 +1,9 @@
+{
+  "name": "curl_loader",
+  "description": "curl_loader app",
+  "version": "0.0.1",
+  "private": true,
+  "dependancies": {
+    "express": "3.0.0"
+  }
+}

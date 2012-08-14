@@ -1,9 +1,11 @@
 express = require 'express'
+RunTime = require './run_time'
 
 class Server
   port = 8000
   constructor: () ->
-    console.log("Server ...")
+    console.log("Server listening on port #{port}")
+    @runner = new RunTime()
    
   start: () ->
     app = express()
@@ -15,14 +17,20 @@ class Server
       return
     
     app.post '/start', (req, res) =>
-      res.json({ok: true})
+      console.log req
+      response = @runner.start(req.body)
+      res.json(response)
       
-    app.get '/', (req, res) =>
-      console.dir req.headers
-      res.json({ok: true, method: "GET"})
+    app.get '/stats', (req, res) =>
+      if @runner.stats
+        response = {ok: true, data: @runner.stats}
+      else
+        response = {ok: false, message: "test is not running"}
+      res.json(response)
 
     app.get '/stop', (req, res) =>
-      res.json({ok: true})
+      response = @runner.stop()
+      res.json(response)
       
     app.listen port
     console.log "Server started on port #{port}"
