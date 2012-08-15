@@ -15,13 +15,16 @@ class RunTime
     t1 = @now()
     @stats.requests += 1
     request(@params.request, (e, r, body) =>
-      # TODO: not yet handling timeouts
-      @stats.responses += 1
-      @stats.response_time = @now() - t1
+      if @stats.finished
+        return
       if r?.statusCode
+        @stats.responses += 1
+        @stats.response_time = @now() - t1
         @stats.codes[r.statusCode] = if @stats.codes[r.statusCode] then @stats.codes[r.statusCode] + 1 else 1
       if r?.statusCode < 400
-        @stats.pass += 1 
+        @stats.pass += 1
+      else if e?.code == "ETIMEDOUT"
+        @stats.timeouts += 1
       else
         @stats.errors += 1
         @stats.last_error = e
@@ -31,7 +34,7 @@ class RunTime
   ramp: () -> 
     return () =>
       @stats.duration = (@now() - @stats.start_time)/1000 # in seconds
-      @stats.active_connections = @stats.requests - @stats.responses
+      @stats.active_connections = @stats.requests - @stats.responses - @stats.timeouts
 
       if @stats.duration <= @params.duration
         volume = @params.pattern.start_count + Math.round (@ramp_rate * @stats.duration)

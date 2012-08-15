@@ -3,15 +3,16 @@ RunTime = require './run_time'
 # Default params, pattern array not yet implemented, times are in seconds
 params = {
   request: {
-    uri: "http://localhost",
-    method: "GET"
+    uri: "http://localhost:3000/system",
+    method: "GET",
+    timeout: 5000
   },
   poll_interval: 1,
   pattern: {
     start_count: 1,
-    end_count: 10000, 
+    end_count: 1000, 
   },
-  duration: 60
+  duration: 30
 }
 
 r = new RunTime()
